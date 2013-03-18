@@ -1,11 +1,29 @@
 require 'debugger'
+require 'yaml'
 
 class MineSweeper
   def initialize
-    @board = setup
+    @smile = ":|"
+    start_menu
+  end
+  def start_menu
+    puts "Would you like to start a new game or load an existing game?"
+    puts "Type 'load' to load, or 'start' to start a new game"
+    command = gets.chomp
+    if command == "load"
+      load
+    elsif command == "start"
+      new_game
+    end
     play
   end
-
+  def load
+    saved_state = File.read("save.txt")
+    @board = YAML::load(saved_state)
+  end
+  def new_game
+    @board = setup
+  end
   def setup
     puts "How many squares long and wide will your board be?"
     size = gets.chomp.to_i
@@ -15,35 +33,55 @@ class MineSweeper
   end
 
   def play(play_status = :continue)
+    @smile = "B)" if play_status == :win
+    @smile = ":(" if play_status == :lose
     print_board
     case play_status
     when :continue
-      play_status = get_move
+      play_status = get_command
       play(play_status)
     when :lose
       puts "You lost!"
     when :win
       puts "Congrats, you won!"
+    when :save
+      save
+    when :load
     end
   end
 
-  def get_move
-    puts "Not dead yet! What's your move?"
+  def save
+    File.open("save.txt", "w") do |f|
+      f.puts @board.to_yaml
+    end
+  end
+
+  def get_command
+    puts "\nNot dead yet! What's your move?"
     puts "format: '3,4' (y-coordinate first)"
     puts "or '5,7,f' to place a flag."
+    puts "If you would like to continue another time, put 's'"
     move_input = gets.chomp.split(",")
     choice = :reveal
     if move_input.length == 3 && move_input[2].downcase == "f"
       choice = :flag
     end
-    move = move_input[0..1].map { |coordinate| coordinate.to_i }
-    @board.take_turn(move, choice)
+    if move_input[0].downcase == "s"
+      :save
+    else
+      move = move_input[0..1].map { |coordinate| coordinate.to_i }
+      @board.take_turn(move, choice)
+    end
   end
 
 	def print_board
-    puts "  #{(0...@board.revealed_board.length).to_a.join(' ')}"
+    top = (0...@board.revealed_board.length).to_a
+    top.map!{|index| index.to_s.ljust(3) }
+    top_str = "#{@smile}   #{top.join}"
+    puts top_str
+    puts "_" * top_str.length
     @board.revealed_board.each_with_index do |row, index|
-      puts "#{index} #{row.join(' ')}"
+      puts "#{index.to_s.ljust(3)} |#{row.join('  ')}"
     end
 	end
 end
@@ -68,8 +106,8 @@ class Board
     end
     set_mines = 0
     until set_mines == mines
-      x = rand(9)
-      y = rand(9)
+      x = rand(size)
+      y = rand(size)
       unless board[x][y] == "b"
         set_mines += 1
         board[x][y] = "b"
