@@ -131,8 +131,18 @@ class Board
     @bomb_locs.include?(move)
   end
   def win?
-    @bomb_locs.inject(true) do |base, loc|
-      base && @revealed_board[loc[0]][loc[1]] == "f"
+    flags = 0
+    @revealed_board.each_with_index do |row, row_index|
+      row.each_with_index do |square, col_index|
+        flags += 1 if square == "f"
+      end
+    end
+    if flags == @bomb_locs.length
+      @bomb_locs.inject(true) do |base, loc|
+        base && @revealed_board[loc[0]][loc[1]] == "f"
+      end
+    else
+      false
     end
   end
   def take_turn(move, choice = :reveal)
