@@ -162,6 +162,9 @@ class Board
     @size = size
     @bomb_locs = []
     @mines = mines
+    # REV: I would combine hidden_board and revealed_board
+    # into one data structure and then use a display board method to show
+    # the board.
 		@hidden_board = generate_board(size, mines)
 		@revealed_board = generate_display_board(size)
 	end
@@ -216,12 +219,14 @@ class Board
 
   def win?
     flags = 0
+    #REV: each_with_index is unneccessary right?
     @revealed_board.each_with_index do |row, row_index|
       row.each_with_index do |square, col_index|
         flags += 1 if square == "f"
       end
     end
     if flags == @bomb_locs.length
+      #REV: base is unclear.
       @bomb_locs.inject(true) do |base, loc|
         base && @revealed_board[loc[0]][loc[1]] == "f"
       end
@@ -246,7 +251,9 @@ class Board
   end
 
   def count_adjacent_mines(move)
+    #REV: should probably stick to either "mines" or "bombs".
     mine_count = 0
+    #REV: cute way to come up with all of these deltas. Cool!
     [-1,0,1].product([-1,0,1]).each do |vector|
       row = vector[0]+move[0]
       col = vector[1]+move[1]
