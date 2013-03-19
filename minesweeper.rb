@@ -124,8 +124,8 @@ class MineSweeper
   end
 
   def get_command
-    puts "\nNot dead yet! What's your move?"
-    puts "format: '3,4' (y-coordinate first)"
+    puts "\nNot dead yet! What's your move?"  # REV: Prints on first move
+    puts "format: '3,4' (y-coordinate first)" # REV: x is generally written first, could be confusing
     puts "or '5,7,f' to place a flag."
     puts "If you would like to continue another time, put 's'"
     move_input = gets.chomp.split(",")
@@ -230,7 +230,7 @@ class Board
     end
   end
 
-  def take_turn(move, choice = :reveal)
+  def take_turn(move, choice = :reveal)  # REV: Error in this method/game breaks on invalid inputilit
     update_display_board(move, choice)
     if choice == :reveal && bomb?(move)
       :lose
