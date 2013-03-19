@@ -8,18 +8,28 @@ class MineSweeper
   end
   def start_menu
     puts "Would you like to start a new game or load an existing game?"
-    puts "Type 'load' to load, or 'start' to start a new game"
-    command = gets.chomp
-    if command == "load"
+    puts "Type 'load' to load, 'start' to start a new game, 'quit' to quit"
+    puts "Or type 'scores' to view the high scores board"
+    command = gets.downcase.chomp
+    case command
+    when "load"
       load
-    elsif command == "start"
+      play
+    when "start"
       new_game
+      play
+    when "scores"
+      scores_prompt
+    when "quit"
+      puts "Byebye loser."
+    else
+      start_menu
     end
-    play
   end
   def load
     saved_state = File.read("save.txt")
     @board = YAML::load(saved_state)
+    @board.add_start_interval
   end
   def new_game
     @board = setup
@@ -44,13 +54,54 @@ class MineSweeper
       puts "You lost!"
     when :win
       puts "Congrats, you won!"
+      @board.add_end_interval
+      update_leader_board (@board.calculate_time)
     when :save
       save
     when :load
     end
+    start_menu if play_status == :lose || play_status == :win
+  end
+  def update_leader_board (total_time)
+    puts "What's your name?"
+    name = gets.chomp
+    score = HighScoreEntry.new(name, total_time, @board.size, @board.mines)
+    if File.exist?("high_scores.txt")
+      saved_scores = File.read("high_scores.txt")
+      high_scores = YAML::load(saved_scores)
+    else
+      high_scores = HighScoreList.new
+    end
+    high_scores.add_score(score)
+
+    File.open("high_scores.txt", "w") do |f|
+      f.puts high_scores.to_yaml
+    end
+  end
+  def scores_prompt
+    puts "Dimension of board for high scores list?"
+    size = gets.chomp.to_i
+    puts "Number of mines for high scores list?"
+    mines = gets.chomp.to_i
+    print_leader_board(size, mines)
+    start_menu
+  end
+  def print_leader_board(size, mines)
+    if File.exist?("high_scores.txt")
+      saved_scores = File.read("high_scores.txt")
+      high_scores = YAML::load(saved_scores)
+      #debugger
+      puts "High Scores for #{size} dimension and #{mines} mines:"
+      high_scores.get_high_scores(size, mines).each_with_index do |score, index|
+        puts "#{index+1}: #{score.name}, #{score.time} seconds"
+      end
+    else
+      puts "No high scores saved!"
+    end
   end
 
   def save
+    @board.add_end_interval
     File.open("save.txt", "w") do |f|
       f.puts @board.to_yaml
     end
@@ -87,13 +138,29 @@ class MineSweeper
 end
 
 class Board
-  attr_reader :bomb_locs, :revealed_board
+  attr_reader :revealed_board, :size, :mines
 	def initialize(size, mines)
+    @start_times = [Time.now]
+    @end_times = []
     @size = size
     @bomb_locs = []
+    @mines = mines
 		@hidden_board = generate_board(size, mines)
 		@revealed_board = generate_display_board(size)
 	end
+  def add_start_interval
+    @start_times << Time.now
+  end
+  def add_end_interval
+    @end_times << Time.now
+  end
+  def calculate_time
+    differences = []
+    @end_times.each_with_index do |end_time, index|
+      differences << end_time - @start_times[index]
+    end
+    differences.inject(:+)
+  end
 	def generate_board(size, mines)
 		board = []
     row_array = []
@@ -190,6 +257,33 @@ class Board
         @revealed_board[move[0]][move[1]] = count_adjacent_mines(move).to_s
         reveal_adjacent(move) if @revealed_board[move[0]][move[1]] == "0"
       end
+    end
+  end
+end
+class HighScoreEntry
+  attr_reader :name, :time, :size, :mines
+  def initialize(name, time, size, mines)
+    @name = name
+    @time = time
+    @size = size
+    @mines = mines
+  end
+end
+class HighScoreList
+  attr_reader :high_scores
+  def initialize
+    @high_scores = []
+  end
+  def add_score(entry)
+    @high_scores << entry
+  end
+  def order_list
+    @high_scores.sort! { |a, b| a.time <=> b.time }
+  end
+  def get_high_scores(size, mines)
+    order_list
+    @high_scores.select do |score|
+      score.size == size && score.mines == mines
     end
   end
 end
